@@ -27,7 +27,7 @@ async function initCheckout() {
     /**
      * language can be one of es, en, pt
      */
-    language: 'es',
+    language: 'en',
     /**
      *  Hide or show the Yuno loading/spinner page
      *  default is true

@@ -3,7 +3,6 @@ const path = require('path')
 const fetch = require('node-fetch')
 const v4 = require('uuid').v4
 const { getCountryData } = require('./utils')
-// const open = require('open') // [修改1] 在 Render 等服务器环境中，open 会导致崩溃，因为没有 GUI 浏览器，注释掉或移除
 
 require('dotenv').config()
 
@@ -14,7 +13,6 @@ const ACCOUNT_CODE = process.env.ACCOUNT_CODE
 const PUBLIC_API_KEY = process.env.PUBLIC_API_KEY
 const PRIVATE_SECRET_KEY = process.env.PRIVATE_SECRET_KEY
 
-// [修改2] 使用 process.env.PORT 以适应 Render 动态分配的端口
 const SERVER_PORT = process.env.PORT || 8080
 
 let CUSTOMER_ID
@@ -38,12 +36,9 @@ const app = express()
 
 app.use(express.json())
 
-// [核心修改 3] 静态资源托管配置
-// 1. 暴露 public 文件夹，这是为了 Apple Pay 的 .well-known 验证文件能被外部访问
+// 静态资源托管配置
 app.use(express.static(path.join(__dirname, 'public')))
-// 2. 暴露 vanilla 目录下的静态资源（如 js, css），确保前端能正常加载
 app.use(express.static(path.join(__dirname, 'vanilla')))
-// 3. 保留原有的 static 暴露
 app.use('/static', express.static(staticDirectory))
 
 app.get('/', (req, res) => {
@@ -95,7 +90,7 @@ app.get('/checkout/payment-methods-unfolded', async (req, res) => {
 })
 
 app.post('/checkout/sessions', async (req, res) => {
-  const country = req.query.country || 'CO'
+  const country = req.query.country || 'US' // 默认测试国家改为US
   const { currency } = getCountryData(country)
 
   const response = await fetch(
@@ -109,8 +104,8 @@ app.post('/checkout/sessions', async (req, res) => {
       },
       body: JSON.stringify({
         account_id: ACCOUNT_CODE,
-        merchant_order_id: 'test00001',
-        payment_description: 'Test MP 1654536326',
+        merchant_order_id: 'ORDER_' + Date.now(), // 动态生成订单号
+        payment_description: 'Test MP ' + Date.now(),
         country,
         customer_id: CUSTOMER_ID,
         amount: {
@@ -125,7 +120,7 @@ app.post('/checkout/sessions', async (req, res) => {
 })
 
 app.post('/checkout/seamless/sessions', async (req, res) => {
-  const country = req.query.country || 'CO'
+  const country = req.query.country || 'US' // 默认测试国家改为US
   const { currency } = getCountryData(country)
 
   const response = await fetch(
@@ -139,8 +134,8 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
       },
       body: JSON.stringify({
         account_id: ACCOUNT_CODE,
-        merchant_order_id: '1655401222',
-        payment_description: 'Test MP 1654536326',
+        merchant_order_id: 'ORDER_' + Date.now(), // 动态生成订单号
+        payment_description: 'Test Seamless Payment',
         country,
         customer_id: CUSTOMER_ID,
         amount: {
@@ -151,7 +146,7 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
         additional_data: {
           order: {
             shipping_amount: 12,
-            fee_amount: 111,
+            fee_amount: 11,
             tip_amount: '12',
             taxes: [
               {
@@ -163,75 +158,18 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
             ],
             items: [
               {
-                category: 'coupons',
+                category: 'clothes',
                 id: 'ASD',
-                name: 'rter',
-                quantity: 12312,
-                unit_amount: 1,
-                brand: 'ASDA',
+                name: 'T-Shirt',
+                quantity: 1,
+                unit_amount: 11,
+                brand: 'DemoBrand',
                 sku_code: '123123',
                 manufacture_part_number: 'SADSADAS'
               }
             ]
-          },
-          airline: {
-            pnr: 'SADSDASD',
-            legs: [
-              {
-                departure_airport: 'ASD',
-                departure_datetime: '2024-07-03T05:00:00',
-                arrival_airport: 'AMS',
-                departure_airport_timezone: '-03:00',
-                arrival_datetime: '2024-08-03T05:00:00',
-                carrier_code: 'KL',
-                flight_number: '842',
-                fare_basis_code: 'HL7LNR',
-                fare_class_code: 'FR',
-                base_fare: 200,
-                base_fare_currency: 'BRL',
-                stopover_code: 's'
-              }
-            ],
-            passengers: [
-              {
-                document: {
-                  document_number: '351.040.753-97',
-                  document_type: 'CI',
-                  country: 'BO'
-                },
-                phone: {
-                  country_code: '57',
-                  number: '3132450765'
-                },
-                first_name: 'John',
-                last_name: 'Doe',
-                middle_name: 'Theodore',
-                type: 'A',
-                date_of_birth: '05-01-1984',
-                nationality: 'BR',
-                loyalty_number: '123456',
-                loyalty_tier: '1'
-              }
-            ],
-            tickets: [
-              {
-                issue: {
-                  carrier_prefix_code: 'ASDASD',
-                  travel_agent_code: 'DSADAS',
-                  travel_agent_name: 'ASDA',
-                  address: 'DASDAS',
-                  city: 'ASDASD',
-                  country: 'BR'
-                },
-                ticket_number: '123456',
-                e_ticket: false,
-                restricted: false,
-                total_fare_amount: 80,
-                total_tax_amount: 22,
-                total_fee_amount: 14
-              }
-            ]
           }
+          // 👉 已经完全移除了 airline 数据块
         },
         customer_payer: {
           merchant_customer_id: '1',
@@ -239,7 +177,7 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
           last_name: 'Doe',
           date_of_birth: '1990-02-28',
           email: 'johndoe@y.uno',
-          nationality: 'BO',
+          nationality: 'US',
           ip_address: '192.168.123.167',
           device_fingerprint: 'hi88287gbd8d7d782ge',
           browser_info: {
@@ -249,33 +187,33 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
             screen_height: '2048',
             screen_width: '1152',
             javascript_enabled: false,
-            language: 'es'
+            language: 'en'
           },
           document: {
-            document_number: '351.040.753-97',
-            document_type: 'CI'
+            document_number: '35104075397',
+            document_type: 'ID'
           },
           billing_address: {
-            address_line_1: 'Calle 34 # 56 - 78',
-            address_line_2: 'Apartamento 502, Torre I',
-            city: 'Bogota',
-            country: 'AR',
-            state: 'Cundinamarca',
-            zip_code: '111111',
-            neighborhood: 'Barrio 11'
+            address_line_1: '123 Test Street',
+            address_line_2: 'Apt 4',
+            city: 'New York',
+            country: 'US',
+            state: 'NY',
+            zip_code: '10001',
+            neighborhood: 'Manhattan'
           },
           shipping_address: {
-            address_line_1: 'Calle 34 # 56 - 78',
-            address_line_2: 'Apartamento 502, Torre I',
-            city: 'Bogota',
-            state: 'Cundinamarca',
-            zip_code: '111111',
-            neighborhood: 'Barrio 11',
-            country: 'CO'
+            address_line_1: '123 Test Street',
+            address_line_2: 'Apt 4',
+            city: 'New York',
+            state: 'NY',
+            zip_code: '10001',
+            neighborhood: 'Manhattan',
+            country: 'US'
           },
           phone: {
-            country_code: '57',
-            number: '3132450765'
+            country_code: '1',
+            number: '5551234567'
           }
         },
         payment_method: {
@@ -283,9 +221,6 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
             card: {
               verify: false,
               capture: true
-            },
-            ticket: {
-              benefit_type: 'PRIVATE'
             }
           },
           vaulted_token: null,
@@ -319,8 +254,8 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
 app.post('/payments', async (req, res) => {
   const checkoutSession = req.body.checkoutSession
   const oneTimeToken = req.body.oneTimeToken
-  const country = req.query.country || 'CO'
-  const { currency, documentNumber, documentType, amount } = getCountryData(country)
+  const country = req.query.country || 'US' // 默认测试国家改为US
+  const { documentNumber, documentType } = getCountryData(country)
 
   const response = await fetch(`${API_URL}/v1/payments`, {
     method: 'POST',
@@ -331,87 +266,44 @@ app.post('/payments', async (req, res) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      description: 'Test Addi',
+      description: 'Test Seamless Payment',
       account_id: ACCOUNT_CODE,
-      merchant_order_id: '0000022',
+      merchant_order_id: 'ORDER_' + Date.now(), // 动态生成订单号
       country,
       additional_data: {
-        airline: {
-          legs: [
-            {
-              arrival_airport: 'AMS',
-              base_fare: 200,
-              base_fare_currency: 'BRL',
-              carrier_code: 'KL',
-              departure_airport: 'EZE',
-              departure_airport_timezone: '-03:00',
-              departure_datetime: '2014-05-12 13:05:00',
-              fare_basis_code: 'HL7LNR',
-              fare_class_code: 'FR',
-              flight_number: '842',
-              stopover_code: 's',
-            },
-          ],
-          passengers: [
-            {
-              country: 'st',
-              date_of_birth: 'stringstri',
-              document: {
-                document_number: documentNumber,
-                document_type: documentType,
-              },
-              first_name: 'string',
-              last_name: 'string',
-              loyalty_number: 'string',
-              loyalty_tier: 'strin',
-              middle_name: 'string',
-              nationality: 'st',
-              type: 's',
-            },
-          ],
-          pnr: '1P-2UUGJW',
-          ticket: {
-            ticket_number: '123456',
-            restricted: false,
-            total_fare_amount: 80.0,
-            total_tax_amount: 22.0,
-            total_fee_amount: 14.0,
-            issue: null,
-            e_ticket: false,
-          },
-        },
+        // 👉 已经完全移除了 airline 数据块
         order: {
-          fee_amount: 40.5,
+          fee_amount: 11,
           items: [
             {
-              brand: 'XYZ',
+              brand: 'DemoBrand',
               category: 'Clothes',
               id: '123AD',
               manufacture_part_number: 'XYZ123456',
-              name: 'Skirt',
-              quantity: 3,
+              name: 'T-Shirt',
+              quantity: 1,
               sku_code: '8765432109',
-              unit_amount: 20,
+              unit_amount: 11,
             },
           ],
-          shipping_amount: 10.35,
+          shipping_amount: 12,
         },
       },
       amount: {
-        currency,
-        value: amount,
+        currency: 'USD',
+        value: 11, // 和 session 保持一致
       },
       checkout: {
         session: checkoutSession,
       },
       customer_payer: {
         billing_address: {
-          address_line_1: 'Calle 34 # 56 - 78',
-          address_line_2: 'Apartamento 502, Torre I',
-          city: 'Bogota',
-          country,
-          state: 'Cundinamarca',
-          zip_code: '111111',
+          address_line_1: '123 Test Street',
+          address_line_2: 'Apt 4',
+          city: 'New York',
+          country: 'US',
+          state: 'NY',
+          zip_code: '10001',
         },
         date_of_birth: '1990-02-28',
         device_fingerprint: 'hi88287gbd8d7d782ge....',
@@ -419,25 +311,25 @@ app.post('/payments', async (req, res) => {
           document_type: documentType,
           document_number: documentNumber,
         },
-        email: 'pepitoperez@y.uno',
-        first_name: 'Pepito',
+        email: 'johndoe@y.uno',
+        first_name: 'John',
         gender: 'MALE',
         id: CUSTOMER_ID,
         ip_address: '192.168.123.167',
-        last_name: 'Perez',
-        merchant_customer_id: 'example00234',
-        nationality: country,
+        last_name: 'Doe',
+        merchant_customer_id: '1',
+        nationality: 'US',
         phone: {
-          country_code: '57',
-          number: '3132450765',
+          country_code: '1',
+          number: '5551234567',
         },
         shipping_address: {
-          address_line_1: 'Calle 34 # 56 - 78',
-          address_line_2: 'Apartamento 502, Torre I',
-          city: 'Bogota',
-          country,
-          state: 'Cundinamarca',
-          zip_code: '111111',
+          address_line_1: '123 Test Street',
+          address_line_2: 'Apt 4',
+          city: 'New York',
+          country: 'US',
+          state: 'NY',
+          zip_code: '10001',
         },
       },
       payment_method: {
@@ -451,7 +343,7 @@ app.post('/payments', async (req, res) => {
 })
 
 app.post('/customers/sessions', async (req, res) => {
-  const country = req.query.country || 'CO'
+  const country = req.query.country || 'US'
 
   const response = await fetch(
     `${API_URL}/v1/customers/sessions`,
@@ -475,8 +367,8 @@ app.post('/customers/sessions', async (req, res) => {
 
 app.post('/customers/sessions/:customerSession/payment-methods', async (req, res) => {
   const customerSession = req.params.customerSession
-  const paymentMethodType = req.query.paymentMethodType || 'NEQUI'
-  const country = req.query.country || 'CO'
+  const paymentMethodType = req.query.paymentMethodType || 'CARD'
+  const country = req.query.country || 'US'
 
   const response = await fetch(
     `${API_URL}/v1/customers/sessions/${customerSession}/payment-methods`,
@@ -535,9 +427,6 @@ app.listen(SERVER_PORT, async () => {
   API_URL = generateBaseUrlApi()
 
   CUSTOMER_ID = await createCustomer().then(({ id }) => id)
-
-  // [修改4] 在无头服务器环境，这段 open 代码会引发异常
-  // await open(`http://localhost:${SERVER_PORT}`); 
 })
 
 const ApiKeyPrefixToEnvironmentSuffix = {
@@ -569,7 +458,7 @@ function createCustomer() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        country: 'CO',
+        country: 'US', // 客户国家改为US
         merchant_customer_id: Math.floor(Math.random() * 1000000).toString(),
         first_name: "John",
         last_name: "Doe",

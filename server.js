@@ -3,7 +3,7 @@ const path = require('path')
 const fetch = require('node-fetch')
 const v4 = require('uuid').v4
 const { getCountryData } = require('./utils')
-const open = require('open')
+// const open = require('open') // [修改1] 在 Render 等服务器环境中，open 会导致崩溃，因为没有 GUI 浏览器，注释掉或移除
 
 require('dotenv').config()
 
@@ -14,7 +14,8 @@ const ACCOUNT_CODE = process.env.ACCOUNT_CODE
 const PUBLIC_API_KEY = process.env.PUBLIC_API_KEY
 const PRIVATE_SECRET_KEY = process.env.PRIVATE_SECRET_KEY
 
-const SERVER_PORT = 8080
+// [修改2] 使用 process.env.PORT 以适应 Render 动态分配的端口
+const SERVER_PORT = process.env.PORT || 8080
 
 let CUSTOMER_ID
 
@@ -36,6 +37,13 @@ const paymentMethodsUnfolded = path.join(__dirname, 'vanilla/pages/payment-metho
 const app = express()
 
 app.use(express.json())
+
+// [核心修改 3] 静态资源托管配置
+// 1. 暴露 public 文件夹，这是为了 Apple Pay 的 .well-known 验证文件能被外部访问
+app.use(express.static(path.join(__dirname, 'public')))
+// 2. 暴露 vanilla 目录下的静态资源（如 js, css），确保前端能正常加载
+app.use(express.static(path.join(__dirname, 'vanilla')))
+// 3. 保留原有的 static 暴露
 app.use('/static', express.static(staticDirectory))
 
 app.get('/', (req, res) => {
@@ -508,7 +516,6 @@ app.get('/payment-methods/:checkoutSession', async (req, res) => {
   res.json(paymentMethods)
 })
 
-
 app.get('/sdk-web/healthy', (req, res) => {
   res.sendStatus(200)
 })
@@ -521,7 +528,7 @@ app.listen(SERVER_PORT, async () => {
   console.log(`server started at port: ${SERVER_PORT}`)
   app._router.stack.forEach((middleware) => {
     if (middleware.route && middleware.route.methods.get) {
-      console.log(`Ruta disponible: http://localhost:8080${middleware.route.path}`);
+      console.log(`Ruta disponible: http://localhost:${SERVER_PORT}${middleware.route.path}`);
     }
   });
 
@@ -529,7 +536,8 @@ app.listen(SERVER_PORT, async () => {
 
   CUSTOMER_ID = await createCustomer().then(({ id }) => id)
 
-  await open(`http://localhost:${SERVER_PORT}`);
+  // [修改4] 在无头服务器环境，这段 open 代码会引发异常
+  // await open(`http://localhost:${SERVER_PORT}`); 
 })
 
 const ApiKeyPrefixToEnvironmentSuffix = {

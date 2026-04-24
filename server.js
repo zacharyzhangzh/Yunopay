@@ -36,8 +36,8 @@ const app = express()
 
 app.use(express.json())
 
-// 静态资源托管配置
-app.use(express.static(path.join(__dirname, 'public')))
+// 静态资源托管配置 (确保 Render 上的 .well-known 文件能被读取，这对于 Apple Pay 验证至关重要)
+app.use(express.static(path.join(__dirname, 'public'), { dotfiles: 'allow' }))
 app.use(express.static(path.join(__dirname, 'vanilla')))
 app.use('/static', express.static(staticDirectory))
 
@@ -143,6 +143,21 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
           value: 11,
         },
         workflow: 'SDK_SEAMLESS',
+        
+        // 【关键点1：CIT 订阅信息】
+        // 告诉 Apple Pay 这是一个连续订阅，Apple Pay 面板上会显示这里的 billing_agreement
+        recurring_payment: {
+          description: "Basic Plan",
+          management_url: "https://yourURL.com/subscriptions",
+          billing_agreement: "After your free trial ends, you will be charged USD 11/month until you cancel.",
+          regular_billing: {
+            label: "Monthly Plan",
+            amount: 11,
+            interval_unit: "month",
+            interval_count: 1
+          }
+        },
+
         additional_data: {
           order: {
             shipping_amount: 12,
@@ -169,7 +184,6 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
               }
             ]
           }
-          // 👉 已经完全移除了 airline 数据块
         },
         customer_payer: {
           merchant_customer_id: '1',
@@ -271,7 +285,6 @@ app.post('/payments', async (req, res) => {
       merchant_order_id: 'ORDER_' + Date.now(), // 动态生成订单号
       country,
       additional_data: {
-        // 👉 已经完全移除了 airline 数据块
         order: {
           fee_amount: 11,
           items: [
@@ -332,12 +345,29 @@ app.post('/payments', async (req, res) => {
           zip_code: '10001',
         },
       },
+      
+      // 【关键点2：请求生成 Vaulted Token】
       payment_method: {
         token: oneTimeToken,
         vaulted_token: null,
+        vault_on_success: true, // 核心逻辑：扣款成功后保存此支付方式
+        type: 'APPLE_PAY',      // 明确声明这是 Apple Pay 绑卡
+        detail: {
+          wallet: {
+            stored_credentials: {
+              reason: "SUBSCRIPTION",
+              usage: "FIRST" // 声明这是 CIT（第一笔客户发起的交易）
+            },
+            verify: true // 根据你需要是否开启强校验
+          }
+        }
       },
     }),
   }).then((resp) => resp.json())
+
+  // 方便你在 Render 后台日志里看到生成的 vaulted_token
+  console.log("== Payment Execution Response ==");
+  console.log(JSON.stringify(response, null, 2));
 
   res.json(response)
 })

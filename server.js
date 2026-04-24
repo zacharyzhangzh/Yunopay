@@ -109,13 +109,13 @@ app.post('/checkout/sessions', async (req, res) => {
       },
       body: JSON.stringify({
         account_id: ACCOUNT_CODE,
-        merchant_order_id: '1655401222',
+        merchant_order_id: 'test00001',
         payment_description: 'Test MP 1654536326',
         country,
         customer_id: CUSTOMER_ID,
         amount: {
-          currency,
-          value: 2000,
+          currency: 'USD',
+          value: 11,
         },
       }),
     }
@@ -144,8 +144,8 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
         country,
         customer_id: CUSTOMER_ID,
         amount: {
-          currency,
-          value: 2000,
+          currency: 'USD',
+          value: 11,
         },
         workflow: 'SDK_SEAMLESS',
         additional_data: {

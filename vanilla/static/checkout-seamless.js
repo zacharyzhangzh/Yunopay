@@ -30,7 +30,7 @@ async function initSeamlessCheckoutLite() {
     /**
       * language can be one of es, en, pt
       */
-    language: 'es',
+    language: 'en',
     /**
      * Empty function.  Won't be called, 
      */

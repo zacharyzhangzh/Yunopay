@@ -36,7 +36,7 @@ const app = express()
 
 app.use(express.json())
 
-// 静态资源托管配置 (确保 Render 上的 .well-known 文件能被读取，这对于 Apple Pay 验证至关重要)
+// 静态资源托管配置
 app.use(express.static(path.join(__dirname, 'public'), { dotfiles: 'allow' }))
 app.use(express.static(path.join(__dirname, 'vanilla')))
 app.use('/static', express.static(staticDirectory))
@@ -90,7 +90,7 @@ app.get('/checkout/payment-methods-unfolded', async (req, res) => {
 })
 
 app.post('/checkout/sessions', async (req, res) => {
-  const country = req.query.country || 'US' // 默认测试国家改为US
+  const country = req.query.country || 'IN' // 默认测试国家改为IN (印度)
   const { currency } = getCountryData(country)
 
   const response = await fetch(
@@ -104,13 +104,13 @@ app.post('/checkout/sessions', async (req, res) => {
       },
       body: JSON.stringify({
         account_id: ACCOUNT_CODE,
-        merchant_order_id: 'ORDER_' + Date.now(), // 动态生成订单号
+        merchant_order_id: 'ORDER_' + Date.now(),
         payment_description: 'Test MP ' + Date.now(),
         country,
         customer_id: CUSTOMER_ID,
         amount: {
-          currency: 'USD',
-          value: 11,
+          currency: 'INR',
+          value: 58,
         },
       }),
     }
@@ -120,7 +120,7 @@ app.post('/checkout/sessions', async (req, res) => {
 })
 
 app.post('/checkout/seamless/sessions', async (req, res) => {
-  const country = req.query.country || 'US' // 默认测试国家改为US
+  const country = req.query.country || 'IN' 
   const { currency } = getCountryData(country)
 
   const response = await fetch(
@@ -134,41 +134,29 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
       },
       body: JSON.stringify({
         account_id: ACCOUNT_CODE,
-        merchant_order_id: 'ORDER_' + Date.now(), // 动态生成订单号
+        merchant_order_id: 'ORDER_' + Date.now(),
         payment_description: 'Test Seamless Payment',
         country,
         customer_id: CUSTOMER_ID,
         amount: {
-          currency: 'USD',
-          value: 11,
+          currency: 'INR',
+          value: 58,
         },
         workflow: 'SDK_SEAMLESS',
         
-        // 【关键点1：CIT 订阅信息】
-        // 告诉 Apple Pay 这是一个连续订阅，Apple Pay 面板上会显示这里的 billing_agreement
-        recurring_payment: {
-          description: "Basic Plan",
-          management_url: "https://yourURL.com/subscriptions",
-          billing_agreement: "After your free trial ends, you will be charged USD 11/month until you cancel.",
-          regular_billing: {
-            label: "Monthly Plan",
-            amount: 11,
-            interval_unit: "month",
-            interval_count: 1
-          }
-        },
-
+        // 恢复普通交易，移除 recurring_payment
+        
         additional_data: {
           order: {
-            shipping_amount: 12,
-            fee_amount: 11,
-            tip_amount: '12',
+            shipping_amount: 0,
+            fee_amount: 0,
+            tip_amount: '0',
             taxes: [
               {
                 type: 'VAT',
-                tax_base: 123,
-                value: 1,
-                percentage: 1
+                tax_base: 58,
+                value: 0,
+                percentage: 0
               }
             ],
             items: [
@@ -177,7 +165,7 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
                 id: 'ASD',
                 name: 'T-Shirt',
                 quantity: 1,
-                unit_amount: 11,
+                unit_amount: 58, // 与总额一致
                 brand: 'DemoBrand',
                 sku_code: '123123',
                 manufacture_part_number: 'SADSADAS'
@@ -191,7 +179,7 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
           last_name: 'Doe',
           date_of_birth: '1990-02-28',
           email: 'johndoe@y.uno',
-          nationality: 'US',
+          nationality: 'IN', // 国籍改为 IN
           ip_address: '192.168.123.167',
           device_fingerprint: 'hi88287gbd8d7d782ge',
           browser_info: {
@@ -210,24 +198,24 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
           billing_address: {
             address_line_1: '123 Test Street',
             address_line_2: 'Apt 4',
-            city: 'New York',
-            country: 'US',
-            state: 'NY',
-            zip_code: '10001',
-            neighborhood: 'Manhattan'
+            city: 'Mumbai',
+            country: 'IN', // 国家改为 IN
+            state: 'MH',
+            zip_code: '400001',
+            neighborhood: 'Colaba'
           },
           shipping_address: {
             address_line_1: '123 Test Street',
             address_line_2: 'Apt 4',
-            city: 'New York',
-            state: 'NY',
-            zip_code: '10001',
-            neighborhood: 'Manhattan',
-            country: 'US'
+            city: 'Mumbai',
+            state: 'MH',
+            zip_code: '400001',
+            neighborhood: 'Colaba',
+            country: 'IN' // 国家改为 IN
           },
           phone: {
-            country_code: '1',
-            number: '5551234567'
+            country_code: '91', // 区号改为 91
+            number: '9876543210'
           }
         },
         payment_method: {
@@ -268,7 +256,7 @@ app.post('/checkout/seamless/sessions', async (req, res) => {
 app.post('/payments', async (req, res) => {
   const checkoutSession = req.body.checkoutSession
   const oneTimeToken = req.body.oneTimeToken
-  const country = req.query.country || 'US' // 默认测试国家改为US
+  const country = req.query.country || 'IN'
   const { documentNumber, documentType } = getCountryData(country)
 
   const response = await fetch(`${API_URL}/v1/payments`, {
@@ -282,11 +270,11 @@ app.post('/payments', async (req, res) => {
     body: JSON.stringify({
       description: 'Test Seamless Payment',
       account_id: ACCOUNT_CODE,
-      merchant_order_id: 'ORDER_' + Date.now(), // 动态生成订单号
+      merchant_order_id: 'ORDER_' + Date.now(), 
       country,
       additional_data: {
         order: {
-          fee_amount: 11,
+          fee_amount: 0,
           items: [
             {
               brand: 'DemoBrand',
@@ -296,15 +284,15 @@ app.post('/payments', async (req, res) => {
               name: 'T-Shirt',
               quantity: 1,
               sku_code: '8765432109',
-              unit_amount: 11,
+              unit_amount: 58, // 价格改为 58
             },
           ],
-          shipping_amount: 12,
+          shipping_amount: 0,
         },
       },
       amount: {
-        currency: 'USD',
-        value: 11, // 和 session 保持一致
+        currency: 'INR',
+        value: 58, 
       },
       checkout: {
         session: checkoutSession,
@@ -313,10 +301,10 @@ app.post('/payments', async (req, res) => {
         billing_address: {
           address_line_1: '123 Test Street',
           address_line_2: 'Apt 4',
-          city: 'New York',
-          country: 'US',
-          state: 'NY',
-          zip_code: '10001',
+          city: 'Mumbai',
+          country: 'IN',
+          state: 'MH',
+          zip_code: '400001',
         },
         date_of_birth: '1990-02-28',
         device_fingerprint: 'hi88287gbd8d7d782ge....',
@@ -331,41 +319,29 @@ app.post('/payments', async (req, res) => {
         ip_address: '192.168.123.167',
         last_name: 'Doe',
         merchant_customer_id: '1',
-        nationality: 'US',
+        nationality: 'IN',
         phone: {
-          country_code: '1',
-          number: '5551234567',
+          country_code: '91',
+          number: '9876543210',
         },
         shipping_address: {
           address_line_1: '123 Test Street',
           address_line_2: 'Apt 4',
-          city: 'New York',
-          country: 'US',
-          state: 'NY',
-          zip_code: '10001',
+          city: 'Mumbai',
+          country: 'IN',
+          state: 'MH',
+          zip_code: '400001',
         },
       },
       
-      // 【关键点2：请求生成 Vaulted Token】
+      // 恢复为普通单次 Token 扣款结构
       payment_method: {
         token: oneTimeToken,
         vaulted_token: null,
-        vault_on_success: true, // 核心逻辑：扣款成功后保存此支付方式
-        type: 'APPLE_PAY',      // 明确声明这是 Apple Pay 绑卡
-        detail: {
-          wallet: {
-            stored_credentials: {
-              reason: "SUBSCRIPTION",
-              usage: "FIRST" // 声明这是 CIT（第一笔客户发起的交易）
-            },
-            verify: true // 根据你需要是否开启强校验
-          }
-        }
       },
     }),
   }).then((resp) => resp.json())
 
-  // 方便你在 Render 后台日志里看到生成的 vaulted_token
   console.log("== Payment Execution Response ==");
   console.log(JSON.stringify(response, null, 2));
 
@@ -373,7 +349,7 @@ app.post('/payments', async (req, res) => {
 })
 
 app.post('/customers/sessions', async (req, res) => {
-  const country = req.query.country || 'US'
+  const country = req.query.country || 'IN'
 
   const response = await fetch(
     `${API_URL}/v1/customers/sessions`,
@@ -398,7 +374,7 @@ app.post('/customers/sessions', async (req, res) => {
 app.post('/customers/sessions/:customerSession/payment-methods', async (req, res) => {
   const customerSession = req.params.customerSession
   const paymentMethodType = req.query.paymentMethodType || 'CARD'
-  const country = req.query.country || 'US'
+  const country = req.query.country || 'IN'
 
   const response = await fetch(
     `${API_URL}/v1/customers/sessions/${customerSession}/payment-methods`,
@@ -488,7 +464,7 @@ function createCustomer() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        country: 'US', // 客户国家改为US
+        country: 'IN', // 客户国家改为IN
         merchant_customer_id: Math.floor(Math.random() * 1000000).toString(),
         first_name: "John",
         last_name: "Doe",
